@@ -26,47 +26,70 @@ to setup
 
 end
 
+to setup-aux [swarmsize_in]
+  __clear-all-and-reset-ticks
+  set wifirange 2.5
+  set swarmsize swarmsize_in
+
+  setup-slimes
+  setup-lights
+  ;trace
+  setup-snakes
+  set convergence 0
+
+end
+
 
 to setup-slimes
-  set x min-pxcor
+  set x min-pxcor + 1
   set y 0
-;  if x <= 0 and x >= -3 [set x x - 5]
-;  if y <= 0 and y >= -3 [set y y - 5]
-;  if x >= 0 and x <= 3 [set x x + 5]
-;  if y >= 0 and y <= 3 [set y y + 5]
- create-slimes swarmsize
- [
-   setxy x y
-   set mode "shadow"
-   set color red
-   ;set shape "circle"
-   ask slimes
-   [set heading random 360
-     fd random-float 0.4]
-   set randomcount 0
-   set avoidcount 0
-   set forwardcount 0
-   set coherencecount 0
 
-     ]
+  create-slimes swarmsize
+  [
+    setxy x y
+    set mode "shadow"
+    set color red
+    ask slimes
+    [
+      set heading random 360
+      fd random-float 0.4
+    ]
+    set randomcount 0
+    set avoidcount 0
+    set forwardcount 0
+    set coherencecount 0
+
+  ]
 
 end
 
 to setup-lights
 
-  ask patch 0 0
+  ask patch 6 -7
   [
-    sprout-lights 1 [set color yellow
-      hide-turtle]
-    set pcolor yellow
-
+    sprout-lights 1
+    [
+      set color yellow
+      hide-turtle
     ]
+    set pcolor yellow
+  ]
+
+  ask patch 6 7
+  [
+    sprout-lights 1
+    [
+      set color red
+      hide-turtle
+    ]
+    set pcolor red
+  ]
 
 end
 
 to setup-snakes
   create-snakes 1
-   [
+  [
     set color blue
     set shape "circle"
     set size 1
@@ -75,72 +98,77 @@ to setup-snakes
     findpossnake
     ask patch-here [set pcolor green]
     pen-down
-    ]
+  ]
 end
 ;========================ITERATION===================================================
 
 to iterate
   tick
-  ;ask slime 10[show ping]
-ask slimes
-[
-  ping-behavior
-  setlightanddark
-  if state = "forwardstate" [forwardstate]
-  set pop (count other slimes with [distance myself <= wifirange and ping = 1])
-  let check 0
-  ;show (count other slimes with [distance myself <= wifirange])
-  if detect-neighbours
-[ set state "avoidstate"
-  ]
-  ;if ((count other slimes with [distance myself <= wifirange]) = swarmsize - 1) [set state "forwardstate"]
-  ifelse (pop - popmem > 0)
-  [set state "randomstate"
-    set check check + 1
-    if check > 1 [show check]
-  ]
+
+  ask slimes
   [
-    if (pop < alpha)
-  [set state "coherencestate"
-    set check check + 1]
+    ping-behavior
+    setlightanddark
+    if state = "forwardstate" [forwardstate]
+    set pop (count other slimes with [distance myself <= wifirange and ping = 1])
+    let check 0
+    if detect-neighbours
+    [
+      set state "avoidstate"
     ]
 
+    ifelse (pop - popmem > 0)
+    [
+      set state "randomstate"
+      set check check + 1
+      if check > 1 [show check]
+    ]
+    [
+      if (pop < alpha)
+      [
+        set state "coherencestate"
+        set check check + 1
+      ]
+    ]
 
-
-  if state = "coherencestate" [coherencestate]
-  if state = "randomstate" [randomstate]
-  if state = "avoidstate" [avoidstate]
-  set popmem pop
- ; show count other slimes with [distance myself <= wifirange]
-
-
+    if state = "coherencestate" [coherencestate]
+    if state = "randomstate" [randomstate]
+    if state = "avoidstate" [avoidstate]
+    set popmem pop
   ]
-if ticks mod 200 = 0
-[
- findpossnake
-]
- if [pcolorhere] of one-of snakes = 1
+
+
+  findpossnake
+
+  if [pcolorhere] of one-of snakes = 1
   [
-  set convergence 1
-  stop
+    set convergence 1
+    ; this is o1
+    stop
+  ]
+  if [pcolorhere] of one-of snakes = 2
+  [
+    set convergence 2
+    ; this is o2
+    stop
   ]
 end
 
 to forwardstate
-fd 0.1
-set forwardcount forwardcount + 1
+  fd 0.1
+  set forwardcount forwardcount + 1
 end
 
 to coherencestate
-set heading heading + 180
-set state "forwardstate"
-set coherencecount coherencecount + 1
+  set heading heading + 180
+  set state "forwardstate"
+  set coherencecount coherencecount + 1
 end
 
 to randomstate
-set heading random 360
-set state "forwardstate"
-set randomcount randomcount + 1
+  set heading random 360
+  set state "forwardstate"
+  set randomcount randomcount + 1
 end
 
 
@@ -153,75 +181,81 @@ end
 
 
 to setlightanddark
-let myheading heading
-set heading towards one-of lights
-let distancetolight distance  one-of lights
-let tempcount 0
-while [distancetolight >= 1]
-[
-  ask patch-ahead distancetolight
+  let myheading heading
+  set heading towards one-of lights with [pcolor = yellow]
+  let distancetolight distance  one-of lights with [pcolor = yellow]
+  let tempcount 0
+  while [distancetolight >= 1]
   [
-    if any? other slimes-here
-     [set tempcount tempcount + 1]
+    ask patch-ahead distancetolight
+    [
+      if any? other slimes-here
+      [set tempcount tempcount + 1]
     ]
-  set distancetolight distancetolight - 1
+    set distancetolight distancetolight - 1
   ]
-ifelse tempcount = 0
-[set color green
-  set mode "light"
-  set sensorrange 0.51]
-[set color red
-  set mode "shadow"
-  set sensorrange 0.4]
-set heading myheading
+  ifelse tempcount = 0
+  [
+    set color green
+    set mode "light"
+    set sensorrange 0.51
+  ]
+  [
+    set color red
+    set mode "shadow"
+    set sensorrange 0.4
+  ]
+  set heading myheading
 end
 
 to ping-behavior
-      ifelse random 100 <= 100 - pingloss
-      [
-        set ping 1
-      ]
-      [
-        set ping 0
-        ]
+  set ping 1
+  ;      ifelse random 100 <= 100 - pingloss
+  ;      [
+  ;        set ping 1
+  ;      ]
+  ;      [
+  ;        set ping 0
+  ;      ]
 end
 
 
 to-report detect-neighbours
-    ifelse any? other slimes with [distance myself <= [sensorrange] of myself][report true][report false]
+  ifelse any? other slimes with [distance myself <= [sensorrange] of myself][report true][report false]
 end
 
 to findpossnake
- let meanposx mean [xcor] of slimes
- let meanposy mean [ycor] of slimes
+  let meanposx mean [xcor] of slimes
+  let meanposy mean [ycor] of slimes
   ask snakes
   [
     setxy meanposx meanposy
     if [pcolor] of patch-here = yellow [set pcolorhere 1]
-    ]
- write-snakes
+    if [pcolor] of patch-here = red [set pcolorhere 2]
+  ]
+  ; write-snakes
 end
 
-to write-tracers
-  file-open (word "ping-loss-data_swarmtaxis/myfile-test-pingloss_" pingloss ".txt")
-  file-type [xcor] of one-of tracers
-  file-type " "
-  file-type [ycor] of one-of tracers
-  file-type " "
-  file-close
-end
+;to write-tracers
+;  file-open (word "ping-loss-data_swarmtaxis/myfile-test-pingloss_" pingloss ".csv")
+;  file-type [xcor] of one-of tracers
+;  file-type " "
+;  file-type [ycor] of one-of tracers
+;  file-type " "
+;  file-close
+;end
 
-to write-snakes
-  file-open (word "ping-loss-data_swarmtaxis/myfile-test-pingloss_" pingloss ".txt")
-  file-type [xcor] of one-of snakes
-  file-type " "
-  file-type [ycor] of one-of snakes
-  file-type " "
-  let sum_be sumalldistances
-  file-type sum_be
-  file-type " "
-  file-close
-end
+;to write-snakes
+;  file-open (word "ping-loss-data_swarmtaxis/myfile-test-pingloss_" pingloss ".csv")
+;  file-type [xcor] of one-of snakes
+;  file-type " "
+;  file-type [ycor] of one-of snakes
+;  file-type " "
+;  let sum_be sumalldistances
+;  file-type sum_be
+;  file-type " "
+;  file-close
+;end
 
 to-report sumalldistances
   let sumall 0
@@ -231,56 +265,66 @@ end
 
 
 to test
-  let i 0
-  while [i <= 30]
+  let i swarm-lower-limit
+  while [i <= swarm-upper-limit]
   [
-  set pingloss i
-  if (file-exists? (word "ping-loss-data_swarmtaxis/myfile-test-pingloss_" pingloss ".txt"))[file-delete (word "ping-loss-data_swarmtaxis/myfile-test-pingloss_" pingloss ".txt")]
-  if (file-exists? (word "ping-loss-data_swarmtaxis/ticks-pingloss_" pingloss ".txt"))[file-delete (word "ping-loss-data_swarmtaxis/ticks-pingloss_" pingloss ".txt")]
-  repeat 100
-  [setup
-    while[convergence = 0 and ticks <= 100000 and (count slimes > (0.2 * swarmsize))][iterate]
-    file-open (word "ping-loss-data_swarmtaxis/myfile-test-pingloss_" pingloss ".txt")
-    file-print " "
+    set swarmsize i
+    ;if (file-exists? (word "security-data_swarmtaxis/experiment_results_" swarmsize ".csv"))[file-delete (word "security-data_swarmtaxis/experiment_results_" swarmsize ".csv")]
+    if (file-exists? (word "security-data_swarmtaxis/ticks_" swarmsize ".csv"))[file-delete (word "security-data_swarmtaxis/ticks_" swarmsize ".csv")]
+    set alpha (swarmsize - 1)
+    file-open (word "security-data_swarmtaxis/ticks_" swarmsize ".csv")
+    file-type "swarmsize"
+    file-type ","
+    file-type "objective"
+    file-type ","
+    file-print "ticks"
     file-close
-    file-open (word "ping-loss-data_swarmtaxis/ticks-pingloss_" pingloss ".txt")
-    file-type count slimes
-    file-type " "
-    file-print ticks
-    file-close
-  ]
-  set i i + 5
+
+    repeat num-reps
+    [
+      setup-aux swarmsize
+      while[convergence = 0 and ticks <= 100000][iterate]
+
+      file-open (word "security-data_swarmtaxis/ticks_" swarmsize ".csv")
+      file-type count slimes
+      file-type ","
+      file-type convergence
+      file-type ","
+      file-print ticks
+      file-close
+    ]
+    set i i + swarm-size-increment
   ]
 end
 
-to trace
- let meanposx mean [xcor] of slimes
- let meanposy mean [ycor] of slimes
-create-tracers 1[
-  set color green
-  setxy meanposx meanposy]
-  write-tracers
-  ask tracers
-  [set heading towards one-of patches with [pcolor = yellow]
-    pen-down
-    while [distance one-of patches with [pcolor = yellow] >= 1]
-    [fd 1]
-   write-tracers
-  file-open (word "ping-loss-data_swarmtaxis/myfile-test-pingloss_" pingloss ".txt")
-  file-print " "
-  file-close
-  pen-up
-  ]
-end
+;to trace
+; let meanposx mean [xcor] of slimes
+; let meanposy mean [ycor] of slimes
+;create-tracers 1[
+;  set color green
+;  setxy meanposx meanposy]
+;;  write-tracers
+;  ask tracers
+;  [set heading towards one-of patches with [pcolor = yellow]
+;    pen-down
+;    while [distance one-of patches with [pcolor = yellow] >= 1]
+;    [fd 1]
+;;   write-tracers
+;  file-open (word "ping-loss-data_swarmtaxis/myfile-test-pingloss_" pingloss ".csv")
+;  file-print " "
+;  file-close
+;  pen-up
+;  ]
+;end
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
 10
-805
-548
-22
-19
-13.0
+830
+631
+-1
+-1
+12.0
 1
 10
 1
@@ -290,10 +334,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--22
-22
--19
-19
+-25
+25
+-25
+25
 1
 1
 1
@@ -306,7 +350,7 @@ BUTTON
 141
 107
 setup
-setup\n
+setup
 NIL
 1
 T
@@ -363,40 +407,85 @@ NIL
 1
 
 SLIDER
-1076
-78
-1249
-111
+24
+288
+197
+321
 swarmsize_input
 swarmsize_input
 0
 120
-17
+17.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-1077
-127
-1249
-160
-pingloss
-pingloss
+28
+377
+200
+410
+swarm-lower-limit
+swarm-lower-limit
 0
 100
+7.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+28
+427
+200
+460
+swarm-upper-limit
+swarm-upper-limit
+0
+100
+25.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+30
+480
+202
+513
+num-reps
+num-reps
+0
+1000
+15.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+31
+543
+203
+576
+swarm-size-increment
+swarm-size-increment
+0
 10
+1.0
 1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-83
-309
-146
-342
+8
+221
+71
+254
 NIL
 test
 NIL
@@ -410,15 +499,15 @@ NIL
 1
 
 SLIDER
-1084
-287
-1256
-320
+30
+338
+202
+371
 alpha
 alpha
-1
-17
-16
+0
+100
+16.0
 1
 1
 NIL
@@ -751,9 +840,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3.1
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -769,7 +857,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@
