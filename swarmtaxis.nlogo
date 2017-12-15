@@ -1,3 +1,5 @@
+extensions [pathdir]
+
 breed [slimes slime]
 breed [lights light]
 breed [snakes snake]
@@ -297,6 +299,78 @@ to test
   ]
 end
 
+
+
+
+
+
+to analyse
+  ; this procedure will generate the necessary folder structure
+  ; for aleatory uncertainty analysis
+  let samples (list 200)  ; 150 200 250 300 ]
+
+  while [length(samples) > 0]
+  [
+    let n first(samples)
+    set num-reps n
+
+    let subsets n-values 20 [i -> i]
+    while [length(subsets) > 0]
+    [
+
+      let s first(subsets) + 1
+      let this-sample n-values n [i -> i]
+
+      while [length(this-sample) > 0]
+      [
+
+        let this-n first(this-sample) + 1
+        let dir-name (word "security-data_swarmtaxis/" n "/" s "/" this-n "")
+        let file-name (word dir-name "/ticks.csv")
+
+        if (file-exists? file-name)[file-delete file-name]
+        pathdir:create dir-name
+        file-open file-name
+        file-print "swarmsize,objective,ticks"
+        file-close
+
+        set swarmsize 17
+        set alpha (swarmsize - 1)
+;
+;        repeat num-reps
+;        [
+        setup-aux swarmsize
+        while[convergence = 0 and ticks <= 100000][iterate]
+
+        file-open file-name
+        file-type count slimes
+        file-type ","
+        file-type convergence
+        file-type ","
+        file-print ticks
+        file-close
+;        ]
+
+        set this-sample but-first(this-sample)
+
+      ]
+      set subsets but-first(subsets)
+
+    ]
+    set samples but-first(samples)
+
+  ]
+
+end
+
+
+
+
+
+
+
+
+
 ;to trace
 ; let meanposx mean [xcor] of slimes
 ; let meanposy mean [ycor] of slimes
@@ -460,7 +534,7 @@ num-reps
 num-reps
 0
 1000
-15.0
+175.0
 1
 1
 NIL
